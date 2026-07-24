@@ -26,9 +26,7 @@ Built as a Flask app with APS 3-legged sign-in. For project structure, node type
 
 ## Running locally
 
-Data Exchange calls require a 3-legged authenticated token. Unlike the CLI sample, this app includes the full OAuth flow — sign in through the browser and the session stores the token for all `/api/dx/*` routes.
-
-Create an app at [https://aps.autodesk.com/myapps](https://aps.autodesk.com/myapps) with a callback URL of `http://localhost:5000/oauth/callback` (or whatever you set `APS_REDIRECT_URI` to).
+Create an app at [https://aps.autodesk.com/myapps](https://aps.autodesk.com/myapps) with a callback URL of `http://localhost:5000/oauth/callback`.
 
 Within the project folder:
 
@@ -52,11 +50,14 @@ Edit `.env` and set `APS_CLIENT_ID` and `APS_CLIENT_SECRET`. Optional: adjust `A
     uv run python run.py
 ```
 
-1. Open [http://localhost:5000/](http://localhost:5000/) in a browser. The landing page shows **Sign In with Autodesk** until you have a session; once signed in, the flow editor opens at `/`. Use **Log Off** to return to the landing page.
+Open [http://localhost:5000/](http://localhost:5000/) in a browser. 
+
+The landing page shows **Sign In with Autodesk** until you have a session; once signed in, the flow editor opens at `/`. 
+
+Use **Log Off** to return to the landing page.
 
 Each API-backed node has a **Get the GraphQL query** button that shows the query, example variables, and required headers. You can also export a flow as a standalone Python script from the toolbar (**Export as Python code**).
 
-To deploy on Dokku, see [DEPLOY.md](./DEPLOY.md) (`Procfile`, `requirements.txt`, `runtime.txt`).
 
 ## Known issues
 
@@ -66,7 +67,6 @@ To deploy on Dokku, see [DEPLOY.md](./DEPLOY.md) (`Procfile`, `requirements.txt`
 
 ## Further Reading
 
-- [Deploying to Dokku (Python buildpack)](./DEPLOY.md)
 - [APS Data Exchange GraphQL tutorial](https://autodesk-platform-services.github.io/aps-dx-graphql-tutorial/)
 - [Detailed documentation for this sample](./other_info.md) — project layout, reading guide, node types, adding/removing nodes
 - [Blog post "Creating Data Exchanges using GraphQL API"](https://aps.autodesk.com/blog/creating-data-exchanges-using-graphql-api)
