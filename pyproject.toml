@@ -1,0 +1,18 @@
+[project]
+name = "dx-flow"
+version = "0.1.0"
+description = "DX Flow - a visual dataflow editor with APS 3-legged sign-in"
+requires-python = ">=3.13"
+dependencies = [
+    "Flask==3.0.0",
+    "Flask-CORS==4.0.0",
+    "requests==2.31.0",
+    "python-dotenv==1.0.0",
+    "openpyxl>=3.1.5",
+    "gunicorn>=22.0",
+]
+
+[dependency-groups]
+dev = [
+    "types-requests",
+]
