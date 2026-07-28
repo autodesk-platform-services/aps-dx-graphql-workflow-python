@@ -59,12 +59,34 @@ function showViewerError(id, message) {
     if (container) container.textContent = `Error: ${message}`;
 }
 
-function elementLabel(element) {
-    return element.name || element.id;
+function isExchange(element) {
+    return element.alternativeIdentifiers !== undefined;
 }
 
-// Rebuilds the <select> options from nodeData.elements. Hidden entirely when
-// there's zero or one element - nothing to choose between.
+function resolveViewableUrn(element) {
+    if (isExchange(element)) {
+        return element.alternativeIdentifiers?.fileVersionUrn || null;
+    }
+    return extractEmbeddedUrn(element.tipVersion?.id);
+}
+
+function isViewable(element) {
+    return Boolean(resolveViewableUrn(element));
+}
+
+function elementLabel(element) {
+    const name = element.name || element.id;
+    if (isExchange(element) && !element.alternativeIdentifiers?.fileVersionUrn) {
+        return `${name} (not translated)`;
+    }
+    return name;
+}
+
+function exchangeNotTranslatedMessage(element) {
+    const name = element.name || element.id;
+    return `Exchange "${name}" is not translated yet — fileVersionUrn is missing. Publish or wait for translation, then rerun the flow.`;
+}
+
 function updateSelectOptions(id, nodeData) {
     const select = document.getElementById(`${id}-viewer-select`);
     if (!select) return;
@@ -76,28 +98,15 @@ function updateSelectOptions(id, nodeData) {
     select.style.display = nodeData.elements.length > 1 ? '' : 'none';
 }
 
-// Exchanges carry alternativeIdentifiers.fileVersionUrn (the specific
-// version Model Derivative actually has a manifest for) directly as a plain
-// urn string - but it's nullable, and is null whenever that exchange's tip
-// version hasn't been derived/translated yet. version.id (a base64 composite
-// string, like an item's tipVersion.id - see extractEmbeddedUrn) is the
-// fallback for that case. Items have neither alternativeIdentifiers field -
-// their only source is tipVersion.id.
-//
-// Deliberately NOT in this list: alternativeIdentifiers.fileUrn and the
-// element's own id. Both only ever resolve to a version-less *lineage* urn,
-// which Model Derivative has no manifest for - feeding one into
-// Document.load doesn't cleanly fail through the onError callback, it
-// crashes the Viewer SDK internally (an uncaught "Cannot read properties of
-// null (reading 'toLowerCase')"). Better to show a clear error here than to
-// hand the SDK a urn already known to be unloadable.
 function loadElement(id, nodeData, element) {
-    const ids = element.alternativeIdentifiers || {};
-    const fileUrn = ids.fileVersionUrn
-        || extractEmbeddedUrn(element.version?.id)
-        || extractEmbeddedUrn(element.tipVersion?.id);
+    const fileUrn = resolveViewableUrn(element);
     if (!fileUrn) {
-        showViewerError(id, 'No viewable model version found for this element');
+        showViewerError(
+            id,
+            isExchange(element)
+                ? exchangeNotTranslatedMessage(element)
+                : 'No viewable model version found for this element',
+        );
         return;
     }
 
@@ -108,12 +117,15 @@ function loadElement(id, nodeData, element) {
     }
 }
 
-// Called from core/run.js once every node connected to this node's input
-// port is ready - `elements` is the combined, flattened list from all of
-// them (this node's input port accepts more than one Exchanges/Items
-// connection at once). Only one element is shown at a time - if more than
-// one came in, a dropdown lets the user pick which; the previous selection
-// is kept across reruns as long as that same element is still present.
+function preferViewableSelection(nodeData) {
+    const selected = nodeData.elements.find((el) => el.id === nodeData.selectedElementId);
+    if (selected && isViewable(selected)) {
+        return selected;
+    }
+
+    return nodeData.elements.find(isViewable) || selected || null;
+}
+
 export function execute(id, nodeData, elements) {
     nodeData.elements = elements || [];
 
@@ -122,8 +134,12 @@ export function execute(id, nodeData, elements) {
         nodeData.selectedElementId = nodeData.elements[0]?.id ?? null;
     }
 
+    const selected = preferViewableSelection(nodeData);
+    if (selected) {
+        nodeData.selectedElementId = selected.id;
+    }
+
     updateSelectOptions(id, nodeData);
 
-    const selected = nodeData.elements.find((el) => el.id === nodeData.selectedElementId);
     if (selected) loadElement(id, nodeData, selected);
 }
