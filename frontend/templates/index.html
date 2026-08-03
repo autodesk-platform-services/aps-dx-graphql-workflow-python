@@ -15,7 +15,10 @@
     <div class="toolbar">
         <div class="toolbar-brand">
             <img src="{{ url_for('static', filename='img/fdxgraph.svg') }}" alt="" class="brand-icon">
-            Data Exchange Workflow Bench
+            <span class="brand-name">
+                Data Exchange Workflow Bench
+                {% if app_version %}<span class="brand-version">v{{ app_version }}</span>{% endif %}
+            </span>
         </div>
         <div class="toolbar-divider"></div>
         <div class="toolbar-actions">

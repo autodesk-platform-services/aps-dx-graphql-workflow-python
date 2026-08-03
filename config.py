@@ -7,6 +7,7 @@ credentials.
 """
 
 import os
+import tomllib
 
 from dotenv import load_dotenv
 
@@ -14,6 +15,17 @@ from dotenv import load_dotenv
 # exists - this is what lets APS_CLIENT_ID etc. below just be a plain
 # os.getenv() call instead of the app needing its own .env parsing.
 load_dotenv()
+
+
+def _read_project_version():
+    """Reads the manually-bumped version straight from pyproject.toml's
+    [project] table - the single place to bump it on each release, mirroring
+    the .NET port's <Version> in its .csproj. Lets the UI show a version
+    badge so a stale browser tab is easy to spot after a Dokku deploy.
+    """
+    pyproject_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pyproject.toml')
+    with open(pyproject_path, 'rb') as f:
+        return tomllib.load(f)['project']['version']
 
 
 class Config:
@@ -76,3 +88,5 @@ class Config:
 
     PORT = int(os.getenv('PORT', 5000))
     DEBUG = os.getenv('FLASK_DEBUG', '1') == '1'
+
+    APP_VERSION = _read_project_version()

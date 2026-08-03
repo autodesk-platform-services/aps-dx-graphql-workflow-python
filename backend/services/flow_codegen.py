@@ -225,12 +225,26 @@ def _decode_item_id(encoded_item_id):
     return parts[2], parts[-1]
 
 
-def _find_derivative_urn(item_payload, tip_version_id):
+def _find_derivative_info(item_payload, tip_version_id):
     for included in item_payload.get('included') or []:
         if included.get('type') == 'versions' and included.get('id') == tip_version_id:
             derivatives = (included.get('relationships') or {}).get('derivatives') or {}
-            return (derivatives.get('data') or {}).get('id')
-    return None
+            urn = (derivatives.get('data') or {}).get('id')
+            manifest_link = ((derivatives.get('meta') or {}).get('link') or {}).get('href')
+            return urn, manifest_link
+    return None, None
+
+
+def _build_metadata_url(derivative_urn, manifest_link):
+    # Data Management's "derivatives" relationship carries a manifest link already
+    # scoped to wherever the derivative lives - for EMEA/AUS-hosted projects that's
+    # "/v2/regions/{region}/designdata/{urn}/manifest", not the global
+    # "/v2/designdata/{urn}/manifest" path, which 401s for those. Prefer rewriting
+    # this link over the hardcoded template whenever it's available.
+    manifest_path = (manifest_link or '').split('?')[0]
+    if manifest_path.endswith('/manifest'):
+        return manifest_path[: -len('/manifest')] + '/metadata'
+    return MODEL_DERIVATIVE_METADATA_URL.format(urn=derivative_urn)
 
 
 def get_views_for_items(items):
@@ -247,10 +261,10 @@ def get_views_for_items(items):
             tip_version_id = (tip.get('data') or {}).get('id')
             if not tip_version_id:
                 continue
-            derivative_urn = _find_derivative_urn(item_payload, tip_version_id)
+            derivative_urn, manifest_link = _find_derivative_info(item_payload, tip_version_id)
             if not derivative_urn:
                 continue
-            metadata_payload = rest_get(MODEL_DERIVATIVE_METADATA_URL.format(urn=derivative_urn))
+            metadata_payload = rest_get(_build_metadata_url(derivative_urn, manifest_link))
             views = (metadata_payload.get('data') or {}).get('metadata') or []
             for view in views:
                 results.append({

@@ -25,6 +25,7 @@ def create_app(config_class=Config):
         static_folder='../frontend/static',
     )
     app.config.from_object(config_class)
+    app.jinja_env.globals['app_version'] = app.config['APP_VERSION']
 
     # Not strictly needed for the app to serve its own frontend (same
     # origin), but harmless and convenient if you ever want to call these

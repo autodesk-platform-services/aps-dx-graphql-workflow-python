@@ -56,10 +56,11 @@ def _decode_item_id(encoded_item_id):
     return parts[2], parts[-1]
 
 
-def _find_derivative_urn(item_payload, tip_version_id):
-    """Digs the Model Derivative "derivative" urn out of a Data Management
-    item response's `included` section - the one entry there whose type is
-    "versions" and whose id matches the item's own tip version.
+def _find_derivative_info(item_payload, tip_version_id):
+    """Digs the Model Derivative "derivative" urn - and its manifest link -
+    out of a Data Management item response's `included` section - the one
+    entry there whose type is "versions" and whose id matches the item's
+    own tip version.
 
     Args:
         item_payload: The raw JSON body from GET .../items/{item_id}.
@@ -67,14 +68,36 @@ def _find_derivative_urn(item_payload, tip_version_id):
             item_payload['data']['relationships']['tip']).
 
     Returns:
-        The derivative urn string, or None if no matching version (or no
-        derivative on it) was found.
+        (derivative_urn, manifest_link) - both None if no matching version
+        (or no derivative on it) was found. manifest_link is the
+        `derivatives.meta.link.href` Data Management hands back, which is
+        already scoped to wherever the derivative actually lives - see
+        `_build_metadata_url`.
     """
     for included in item_payload.get('included') or []:
         if included.get('type') == 'versions' and included.get('id') == tip_version_id:
             derivatives = (included.get('relationships') or {}).get('derivatives') or {}
-            return (derivatives.get('data') or {}).get('id')
-    return None
+            urn = (derivatives.get('data') or {}).get('id')
+            manifest_link = ((derivatives.get('meta') or {}).get('link') or {}).get('href')
+            return urn, manifest_link
+    return None, None
+
+
+def _build_metadata_url(derivative_urn, manifest_link):
+    """Builds the Model Derivative metadata URL to call for a derivative.
+
+    Data Management's "derivatives" relationship carries a manifest link
+    that is already scoped to wherever the derivative actually lives - for
+    EMEA/AUS-hosted projects that's
+    ".../v2/regions/{region}/designdata/{urn}/manifest", not the global
+    ".../v2/designdata/{urn}/manifest" path, which 401s for those. Prefer
+    rewriting this link over the hardcoded global template whenever Data
+    Management gives us one.
+    """
+    manifest_path = (manifest_link or '').split('?')[0]
+    if manifest_path.endswith('/manifest'):
+        return manifest_path[: -len('/manifest')] + '/metadata'
+    return MODEL_DERIVATIVE_METADATA_URL.format(urn=derivative_urn)
 
 
 def get_views_for_item(encoded_item_id, access_token):
@@ -119,12 +142,12 @@ def get_views_for_item(encoded_item_id, access_token):
     if not tip_version_id:
         raise ViewsLookupError(f'Item {item_id} has no tip version')
 
-    derivative_urn = _find_derivative_urn(item_payload, tip_version_id)
+    derivative_urn, manifest_link = _find_derivative_info(item_payload, tip_version_id)
     if not derivative_urn:
         raise ViewsLookupError(f'Tip version {tip_version_id} has no derivative')
 
     metadata_response = requests.get(
-        MODEL_DERIVATIVE_METADATA_URL.format(urn=derivative_urn),
+        _build_metadata_url(derivative_urn, manifest_link),
         headers={'Authorization': f'Bearer {access_token}'},
     )
     metadata_response.raise_for_status()

@@ -13,7 +13,10 @@
     <div class="landing-card">
         <div class="landing-brand">
             <img src="{{ url_for('static', filename='img/fdxgraph.svg') }}" alt="" class="brand-icon">
-            Data Exchange Workflow Bench
+            <span class="brand-name">
+                Data Exchange Workflow Bench
+                {% if app_version %}<span class="brand-version">v{{ app_version }}</span>{% endif %}
+            </span>
         </div>
 
         <!-- Placeholder art: a small node graph in the app's accent colors -->
