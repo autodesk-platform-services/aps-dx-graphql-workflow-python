@@ -1,3 +1,6 @@
+<!-- archived-notice -->
+> **This repository is archived.** Archived repositories are not maintained or supported.
+
 # Data Exchange Workflow Bench
 
 [![ver](https://img.shields.io/badge/language-python-orange.svg)](https://www.python.org/)
